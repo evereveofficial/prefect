@@ -62,6 +62,11 @@ from prefect.utilities.templating import apply_values
 
 @app.command()
 async def deploy(
+    deploy_file: str = typer.Option(
+        "prefect.yaml",
+        "--deploy_file",
+        help="Path to the deploy configuration file. Defaults to 'prefect.yaml'.",
+    ),
     entrypoint: str = typer.Argument(
         None,
         help=(
@@ -221,7 +226,7 @@ async def deploy(
         "params": params,
     }
     try:
-        deploy_configs, actions = _load_deploy_configs_and_actions(ci=ci)
+        deploy_configs, actions = _load_deploy_configs_and_actions(file_path=deploy_file, ci=ci)
         deploy_configs = _pick_deploy_configs(deploy_configs, names, deploy_all, ci)
 
         if len(deploy_configs) > 1:
@@ -1027,28 +1032,29 @@ def _handle_deployment_yaml_copy(prefect_yaml_contents, ci):
         )
 
 
-def _load_deploy_configs_and_actions(ci=False) -> Tuple[List[Dict], Dict]:
+def _load_deploy_configs_and_actions(file_path: str = "prefect.yaml", ci=False) -> Tuple[List[Dict], Dict]:
     """
-    Load deploy configs and actions from the prefect.yaml file.
+    Load deploy configs and actions from the specified file.
 
     Handles the deprecation of the deployment.yaml file.
 
     Args:
+        file_path: Path to the deploy configuration file.
         ci: Disables interactive mode if True
 
     Returns:
         Tuple[List[Dict], Dict]: a tuple of deployment configurations and actions
     """
     try:
-        with open("prefect.yaml", "r") as f:
-            prefect_yaml_contents = yaml.safe_load(f)
+        with open(file_path, "r") as f:
+            contents = yaml.safe_load(f)
     except FileNotFoundError:
-        prefect_yaml_contents = {}
+        contents = {}
 
     actions = {
-        "build": prefect_yaml_contents.get("build", []),
-        "push": prefect_yaml_contents.get("push", []),
-        "pull": prefect_yaml_contents.get("pull", []),
+        "build": contents.get("build", []),
+        "push": contents.get("push", []),
+        "pull": contents.get("pull", []),
     }
 
     # TODO: Remove this after December 2023
